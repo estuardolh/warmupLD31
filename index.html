@@ -1,0 +1,119 @@
+<!DOCTYPE html> 
+<html>
+	<head>
+		<script src="./jaws-dynamic.js" type="text/javascript"></script>
+		<title>asdf hahaha</title>
+		<meta charset="UTF8" ></meta>
+	</head>
+	<body>
+		<canvas width=400 height=300 style="background-color: gray;"></canvas>
+		<script>
+			function Asdf(){
+				var bubbles;
+				var current_bubble = null;
+				var shooter;
+				var sprite_sheet;
+				
+				this.setup = function(){
+					var bubble_w = 20;
+					var bubble_h = 20;
+					bubbles = new jaws.SpriteList();
+					sprite_sheet = new jaws.SpriteSheet({image: "./img/bubble.png", frame_size: [bubble_w, bubble_h]});
+					
+					// init bubbles
+					var init_w = 4;
+					var init_h = 4;
+					for( var i = 0; i < init_w; i ++ ){
+						for( var j = 0 ; j < init_h ; j ++ ){
+							bubbles.push( new jaws.Sprite({ image: sprite_sheet.frames[ 0 ], x: bubble_w + i * bubble_w , y: j * bubble_h, anchor: "left" }) );
+						}
+					}
+					
+					// a bubble must be stick now ?
+					bubbles.stick = function( bubble ){
+						if( bubble.life_time < 0 ){
+							return true;
+						}
+						bubble.life_time --;
+						
+						return false;
+					}
+					
+					// init shooter
+					var shooter_w = 20;
+					var shooter_h = 50;
+					shooter = new jaws.Sprite({ image: "./img/shooter.png", x: jaws.width / 2, y: jaws.height, anchor: "bottom_center" });
+					
+					// shot another bubble!
+					shooter.shot = function( a_vx, a_vy ){
+						if( current_bubble != null ){
+							return;
+						}
+						
+						current_bubble = new jaws.Sprite({ image: sprite_sheet.frames[0], x: this.x , y: this.y , anchor:"center_center"});
+						current_bubble.vx = a_vx;
+						current_bubble.vy = a_vy;
+						current_bubble.life_time = 60;
+						current_bubble.update = function(){
+							this.move( this.vx , this.vy );
+						}
+					}
+				};
+				
+				this.update = function(){
+					var x2 = jaws.width / 2;
+					var y2 = jaws.height;
+					var x1 = jaws.mouse_x;
+					var y1 = jaws.mouse_y;
+					
+					var dx = ( x2 - x1 ) * -1;
+					var dy = Math.abs( y2 - y1 );
+					
+					if( dy != 0  ){
+						radians = Math.atan( dx / dy );
+						
+						var degrees = radians * ( 180 / Math.PI );
+						
+						shooter.rotateTo( degrees );
+						if (jaws.pressed("left_mouse_button") ){
+							
+							var a = Math.sqrt( Math.pow( dy, 2 ) + Math.pow( dx , 2 ) );
+
+							var factor = 4;
+							
+							shooter.shot( (dx / a)*factor , ( -1 * ( Math.abs( dy/ a ) ) )*factor );
+						}
+					}
+					
+					
+					if( current_bubble != null ){
+						current_bubble.update();
+					
+						var bubble_stick = false;
+						bubble_stick = bubbles.stick( current_bubble );
+						
+						if( bubble_stick == true ){
+							current_bubble = null;
+						}
+					}
+				};
+				
+				this.draw = function(){
+					jaws.clear();
+					bubbles.draw();
+					shooter.draw();
+					
+					if( current_bubble != null ){
+						current_bubble.draw();
+					}
+				};
+			}
+		
+			jaws.onload = function(){
+				jaws.unpack();
+				jaws.assets.add(["./img/bubble.png", "./img/shooter.png"]);
+				jaws.start( Asdf );
+			}
+		</script>
+	</body>
+</html>
