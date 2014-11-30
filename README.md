@@ -18,13 +18,15 @@ Warm up for LD 31
 	- Music/Sounds: LMMS.
 
 == game
+
 	put bubbles of the same color to kill them before the count down reache 1.
-	if some bubble reach the floor then you loose.
+	If some bubble reach the floor then you loose.
 	
-	let me know how many hoy reached! :D
+	let me know how many you reached! :D
 	
 	
 == controls
+
 	- Enter to pause/start
 	
 	- aim & fire with mouse
