@@ -16,6 +16,11 @@
 				var shooter;
 				var time_left = 0;
 				var text_time_left;
+				var bubble_diameter = 20;
+				
+				var distanceBetween = function( bubble1, bubble2 ){
+					return Math.sqrt( Math.pow(bubble1.x - bubble2.x , 2) + Math.pow( bubble1.y - bubble2.y, 2 ) );
+				};
 				
 				this.setup = function(){
 					var bubble_w = 20;
@@ -34,34 +39,44 @@
 						for( var j = 0 ; j < init_h ; j ++ ){
 							// random
 							var image_src;
+							var image_daColor;
 							var image_random = 0;
 							image_random = Math.random();
 							
 							if( image_random > 0 & image_random <= 0.3 ){
 								image_src = "./img/bubble_green.png";
+								image_daColor = "green";
 							}else if( image_random > 0.3 & image_random <= 0.6 ){
 								image_src = "./img/bubble_blue.png";
+								image_daColor = "blue";
 							}else if( image_random > 0.6 & image_random <= 1 ){
 								image_src = "./img/bubble_red.png";
+								image_daColor = "red";
 							}
+							var a_bubble = new jaws.Sprite({ image: image_src, x: (i+group_offset_x) * bubble_w , y: (j+group_offset_y) * bubble_h, anchor: "center_center" });
+							a_bubble.daColor = image_daColor;
+							a_bubble.visible = true;
+							a_bubble.toPop = false;
 							
-							bubbles.push( new jaws.Sprite({ image: image_src, x: (i+group_offset_x) * bubble_w , y: (j+group_offset_y) * bubble_h, anchor: "center_center" }) );
+							bubbles.push( a_bubble );
 						}
 					}
 					
 					// a bubble must be stick now ?
 					bubbles.stick = function( bubble ){
 						var res = false;
-					
+						
 						// bubble touch others ?
 						bubbles.forEach(function(entry){
-							var bubble_diameter = 20;
 							var distance_between = 0;
 							
-							distance_between = Math.sqrt( Math.pow(entry.x - bubble.x , 2) + Math.pow( entry.y - bubble.y, 2 ) );
+							distance_between = distanceBetween(entry, bubble);
 							
-							if( parseInt(distance_between) <= bubble_diameter + 1 ){
+							if( distance_between <= bubble_diameter + 1 && entry.visible == true ){
 								// console.log("because entry_x: "+entry.x+" entry_y: "+entry.y+" bubble_x: "+bubble.x+" bubble_y: "+bubble.y);
+								
+								//bubble.x -= bubble.vx;
+								//bubble.y -= bubble.vy;
 								
 								res = true;
 								
@@ -70,7 +85,67 @@
 						});
 						
 						return res;
-					}
+					};
+					
+					// some pop? 
+					bubbles.pop = function( bubble ){
+						// color filter!
+						/*
+						bubbles.filter(function( element, bubble ){
+							console.log("color = "+bubble.daColor);
+							return element.daColor == bubble.daColor;
+						}).forEach(function( element ){
+							element.toPop = true;
+						});
+						*/
+						
+						var validateColor = function( element ){
+							return element.daColor == bubble.daColor && element.visible == true && bubble.visible == true;
+						};
+						
+						// only color-sisters
+						var color_bubbles = bubbles.filter(validateColor);
+						
+						var validateSisters = function( element ){
+							var sisters_count = 0;
+						
+							color_bubbles.forEach(function( entry ){
+								if( distanceBetween( element, entry ) <= 1.1*bubble_diameter 
+									&& ( entry.toPop == true || element.toPop == true )
+									&& ( entry.visible == true && element.visible == true )  ){
+									sisters_count ++;
+									entry.toPop = true;
+									element.toPop = true;
+								}
+							});
+							
+							return sisters_count > 0;
+						}
+						
+						// only near-sisters
+						var near_bubbles = color_bubbles.filter(validateSisters);
+						near_bubbles = color_bubbles.reverse().filter(validateSisters);
+						
+						// how many to pop ?
+						var how_many = 0;
+						bubbles.forEach(function( element ){
+							if( element.toPop == true ) how_many ++
+						})
+						
+						if( how_many > 1 ){
+							// pop now!
+							bubbles.forEach(function( element ){
+								if( element.toPop == true ){
+									element.visible = false;
+								}
+							});
+						}
+						
+						// unmark all
+						bubbles.forEach(function( element ){
+							element.toPop = false;
+						});
+					};
 					
 					// init shooter
 					var shooter_w = 20;
@@ -86,6 +161,9 @@
 						current_bubble = new jaws.Sprite({ image: "./img/bubble_green.png", x: this.x , y: this.y , anchor:"center_center"});
 						current_bubble.vx = a_vx;
 						current_bubble.vy = a_vy;
+						current_bubble.visible = true;
+						current_bubble.toPop = false;
+						current_bubble.daColor = "green";		// random me?
 						current_bubble.life_time = 60;
 						current_bubble.update = function(){
 							this.move( this.vx , this.vy );
@@ -126,8 +204,12 @@
 						
 						if( bubble_stick == true ){
 							var new_bubble = new jaws.Sprite({ image: current_bubble.image, x: current_bubble.x, y: current_bubble.y, anchor:"center_center"});
+							new_bubble.daColor = current_bubble.daColor;
+							new_bubble.visible = true;
+							new_bubble.toPop = true;
 							
 							bubbles.push( new_bubble );
+							bubbles.pop( new_bubble );
 						 
 							current_bubble = null;
 						}
@@ -138,7 +220,11 @@
 					jaws.clear();
 					
 					text_time_left.draw();
-					bubbles.draw();
+					bubbles.forEach(function(entry){
+						if( entry.visible == true ){
+							entry.draw();
+						}
+					})
 					shooter.draw();
 					
 					if( current_bubble != null ){
