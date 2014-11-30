@@ -1,4 +1,4 @@
-﻿Warm up for LD 31
+Warm up for LD 31
 =========
 
 I will use for LD 31:
