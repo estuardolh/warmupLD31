@@ -7,16 +7,23 @@
 	</head>
 	<body bgcolor="black">
 		<center>
-			<canvas width=400 height=600 style="background-color: gray;"></canvas>
+			<canvas width=400 height=600 style="background-color: #444455;"></canvas>
 		</center>
 		<script>
 			function Asdf(){
 				var bubbles;
 				var current_bubble = null;
 				var shooter;
-				var time_left = 0;
+				var shooter_spritesheet;
+				var guess_fps = 60;
+				var dificulty_factor = 10;	// 10 to 1, easy to hard
+				var clock_counter = guess_fps * dificulty_factor;
 				var text_time_left;
 				var bubble_diameter = 20;
+				var bubble_selection;
+				var count_down = 100;
+				
+				var color_src = { green:"./img/bubble_green.png", red:"./img/bubble_red.png", blue:"./img/bubble_blue.png" };
 				
 				var distanceBetween = function( bubble1, bubble2 ){
 					return Math.sqrt( Math.pow(bubble1.x - bubble2.x , 2) + Math.pow( bubble1.y - bubble2.y, 2 ) );
@@ -27,7 +34,18 @@
 					var bubble_h = 20;
 					bubbles = new jaws.SpriteList();
 					
-					text_time_left = new jaws.Text({ text: "LEFT TIME: ", x:200 , y:20, color: "white", fontSize: 12, style: "bold" });
+					text_time_left = new jaws.Text({ text: "RUSH INCOMING", x:30 , y:40, color: "white", fontSize: 10,fontFamily: "arial", style: "bold" });
+					
+					bubble_selection = new jaws.Sprite({ image: color_src.green , x: jaws.width / 2 , y: jaws.height , anchor:"center_center"});
+					bubble_selection.vx = 0;
+					bubble_selection.vy = 0;
+					bubble_selection.visible = true;
+					bubble_selection.toPop = false;
+					bubble_selection.daColor = "green";
+					bubble_selection.life_time = -1;
+					bubble_selection.update = function(){
+						this.move( this.vx , this.vy );
+					}
 					
 					var group_offset_x = 2;
 					var group_offset_y = 4;					
@@ -53,12 +71,15 @@
 								image_src = "./img/bubble_red.png";
 								image_daColor = "red";
 							}
-							var a_bubble = new jaws.Sprite({ image: image_src, x: (i+group_offset_x) * bubble_w , y: (j+group_offset_y) * bubble_h, anchor: "center_center" });
-							a_bubble.daColor = image_daColor;
-							a_bubble.visible = true;
-							a_bubble.toPop = false;
 							
-							bubbles.push( a_bubble );
+							if( Math.random() < 0.6 ){
+								var a_bubble = new jaws.Sprite({ image: image_src, x: (i+group_offset_x) * bubble_w , y: (j+group_offset_y) * bubble_h, anchor: "center_center" });
+								a_bubble.daColor = image_daColor;
+								a_bubble.visible = true;
+								a_bubble.toPop = false;
+								
+								bubbles.push( a_bubble );
+							}
 						}
 					}
 					
@@ -72,11 +93,8 @@
 							
 							distance_between = distanceBetween(entry, bubble);
 							
-							if( distance_between <= bubble_diameter + 1 && entry.visible == true ){
+							if( parseInt(distance_between) < parseInt(bubble_diameter + 1) && entry.visible == true ){
 								// console.log("because entry_x: "+entry.x+" entry_y: "+entry.y+" bubble_x: "+bubble.x+" bubble_y: "+bubble.y);
-								
-								//bubble.x -= bubble.vx;
-								//bubble.y -= bubble.vy;
 								
 								res = true;
 								
@@ -90,15 +108,6 @@
 					// some pop? 
 					bubbles.pop = function( bubble ){
 						// color filter!
-						/*
-						bubbles.filter(function( element, bubble ){
-							console.log("color = "+bubble.daColor);
-							return element.daColor == bubble.daColor;
-						}).forEach(function( element ){
-							element.toPop = true;
-						});
-						*/
-						
 						var validateColor = function( element ){
 							return element.daColor == bubble.daColor && element.visible == true && bubble.visible == true;
 						};
@@ -110,7 +119,7 @@
 							var sisters_count = 0;
 						
 							color_bubbles.forEach(function( entry ){
-								if( distanceBetween( element, entry ) <= 1.1*bubble_diameter 
+								if( distanceBetween( element, entry ) <= 1.2 * bubble_diameter
 									&& ( entry.toPop == true || element.toPop == true )
 									&& ( entry.visible == true && element.visible == true )  ){
 									sisters_count ++;
@@ -148,24 +157,44 @@
 					};
 					
 					// init shooter
+					shooter_animation = new jaws.Animation({ sprite_sheet:"./img/shooter.png", frame_size:[20, 50] });
+					
 					var shooter_w = 20;
 					var shooter_h = 50;
-					shooter = new jaws.Sprite({ image: "./img/shooter.png", x: jaws.width / 2, y: jaws.height, anchor: "bottom_center" });
+					shooter = new jaws.Sprite({ image: shooter_animation.next(), x: jaws.width / 2, y: jaws.height, anchor: "bottom_center" });
+					shooter.pixel_h = 50;
 					
 					// shot another bubble!
-					shooter.shot = function( a_vx, a_vy ){
+					shooter.shot = function( a_vx, a_vy, color ){
 						if( current_bubble != null ){
 							return;
 						}
 						
-						current_bubble = new jaws.Sprite({ image: "./img/bubble_green.png", x: this.x , y: this.y , anchor:"center_center"});
+						var this_angle = this.angle;
+						
+						var image_src;
+						
+						if( color == 'red'){
+							image_src = color_src.red;
+						}else if( color == 'green' ){
+							image_src = color_src.green;
+						}else if( color == 'blue' ){
+							image_src = color_src.blue;
+						}
+						
+						
+						current_bubble = new jaws.Sprite({ image: image_src , x: this.x + this.pixel_h * Math.cos((this_angle - 90)*(Math.PI/180)) , y: this.y + this.pixel_h*Math.sin((this_angle - 90)*(Math.PI/180)) , anchor:"center_center"});
 						current_bubble.vx = a_vx;
 						current_bubble.vy = a_vy;
 						current_bubble.visible = true;
 						current_bubble.toPop = false;
-						current_bubble.daColor = "green";		// random me?
+						current_bubble.daColor = color;		// random me?
 						current_bubble.life_time = 60;
 						current_bubble.update = function(){
+							if( jaws.isOutsideCanvas(current_bubble) == true ){
+								this.vx = - this.vx;
+								//this.vy = - this.vy;
+							}
 							this.move( this.vx , this.vy );
 						}
 					}
@@ -186,13 +215,29 @@
 						var degrees = radians * ( 180 / Math.PI );
 						
 						shooter.rotateTo( degrees );
+						
+						var make_selection = function(){
+							if( bubble_selection.daColor == "green" ){
+								bubble_selection.daColor = "blue"
+								bubble_selection.setImage(color_src.blue);
+							}else if( bubble_selection.daColor == "blue" ){
+								bubble_selection.daColor = "red";
+								bubble_selection.setImage(color_src.red);
+							}else if( bubble_selection.daColor == "red" ){
+								bubble_selection.daColor = "green";
+								bubble_selection.setImage(color_src.green);
+							}
+						};
+						
+						jaws.on_keydown("right_mouse_button", make_selection);
+						
 						if (jaws.pressed("left_mouse_button") ){
 							
 							var a = Math.sqrt( Math.pow( dy, 2 ) + Math.pow( dx , 2 ) );
 
 							var factor = 12;
 							
-							shooter.shot( (dx / a)*factor , ( -1 * ( Math.abs( dy/ a ) ) )*factor );
+							shooter.shot( (dx / a)*factor , ( -1 * ( Math.abs( dy/ a ) ) )*factor, bubble_selection.daColor );
 						}
 					}
 					
@@ -214,6 +259,24 @@
 							current_bubble = null;
 						}
 					}
+					
+					// update clock
+					clock_counter -- ;
+					if( clock_counter < 0 ){
+						clock_counter = guess_fps * dificulty_factor;
+						
+						dificulty_factor --;
+					}
+					
+					if( count_down < 0 ){
+						/*
+						for(){
+							bubbles.push( new  );
+						}
+						*/
+						count_down = 100;
+					}
+					count_down --;
 				};
 				
 				this.draw = function(){
@@ -230,6 +293,10 @@
 					if( current_bubble != null ){
 						current_bubble.draw();
 					}
+					
+					bubble_selection.draw();
+					
+					shooter.setImage( shooter_animation.next() );
 				};
 			}
 		
