@@ -19,9 +19,51 @@
 				var dificulty_factor = 10;	// 10 to 1, easy to hard
 				var clock_counter = guess_fps * dificulty_factor;
 				var text_time_left;
+				var text_killed_bubbles;
+				var text_next_incoming;
+				var text_credits;
+				var text_paused;
 				var bubble_diameter = 20;
 				var bubble_selection;
-				var count_down = 100;
+				var count_down_constant = 500;
+				var count_down = count_down_constant;
+				var count_killed_bubbles = 0;
+				var are_killed_bubbles = false;
+				var game_paused = false;
+				
+				var init_w = 16;
+				var init_h = 8;
+				var bubble_w = 20;
+				var bubble_h = 20;			
+				var group_offset_x = 2;
+				var group_offset_y = 4;
+				
+				var generateZeros = function( value ){
+					var str_value = value + "";
+					var str_normal = "0000000000";
+					
+					
+					return str_normal.substring( str_normal.length - str_value.length, str_value.length ) + str_value;
+				}
+
+				var generateRandomImage = function(){
+					var image_random = 0;
+					image_random = Math.random();
+					
+					if( image_random > 0 & image_random <= 0.3 ){
+						image_src = "./img/bubble_green.png";
+						image_daColor = "green";
+					}else if( image_random > 0.3 & image_random <= 0.6 ){
+						image_src = "./img/bubble_blue.png";
+						image_daColor = "blue";
+					}else if( image_random > 0.6 & image_random <= 1 ){
+						image_src = "./img/bubble_red.png";
+						image_daColor = "red";
+					}
+					
+					return { src: image_src, daColor: image_daColor };
+				};
+				
 				
 				var color_src = { green:"./img/bubble_green.png", red:"./img/bubble_red.png", blue:"./img/bubble_blue.png" };
 				
@@ -30,12 +72,13 @@
 				};
 				
 				this.setup = function(){
-					var bubble_w = 20;
-					var bubble_h = 20;
 					bubbles = new jaws.SpriteList();
 					
 					text_time_left = new jaws.Text({ text: "RUSH INCOMING", x:30 , y:40, color: "white", fontSize: 10,fontFamily: "arial", style: "bold" });
-					
+					text_paused = new jaws.Sprite({ image: "./img/paused.png", x:jaws.width / 2 , y:jaws.height / 2, anchor: "center_center" });
+					text_killed_bubbles = jaws.Text({ text: "KILLED BUBBLES: "+generateZeros(count_killed_bubbles), x: jaws.height , y:60, color: "white", fontSize: 10,fontFamily: "Courier", style: "bold", anchor: "top_right" });
+					text_next_incoming = jaws.Text({ text: "COUNTDOWN: 4", x: 28 , y:60, color: "red", fontSize: 14,fontFamily: "Courier", style: "bold", anchor: "top_left" });
+					text_credits = jaws.Text({ text: "Follow me github.com/estuardolh", x: jaws.width / 2 - 20 , y: 20 , color: "lime", fontSize: 14,fontFamily: "Courier", style: "bold", anchor: "top_left" });
 					bubble_selection = new jaws.Sprite({ image: color_src.green , x: jaws.width / 2 , y: jaws.height , anchor:"center_center"});
 					bubble_selection.vx = 0;
 					bubble_selection.vy = 0;
@@ -47,32 +90,19 @@
 						this.move( this.vx , this.vy );
 					}
 					
-					var group_offset_x = 2;
-					var group_offset_y = 4;					
-					
 					// init bubbles
-					var init_w = 16;
-					var init_h = 16;
 					for( var i = 0; i < init_w; i ++ ){
 						for( var j = 0 ; j < init_h ; j ++ ){
 							// random
 							var image_src;
 							var image_daColor;
-							var image_random = 0;
-							image_random = Math.random();
 							
-							if( image_random > 0 & image_random <= 0.3 ){
-								image_src = "./img/bubble_green.png";
-								image_daColor = "green";
-							}else if( image_random > 0.3 & image_random <= 0.6 ){
-								image_src = "./img/bubble_blue.png";
-								image_daColor = "blue";
-							}else if( image_random > 0.6 & image_random <= 1 ){
-								image_src = "./img/bubble_red.png";
-								image_daColor = "red";
-							}
+							var image_random = generateRandomImage();
 							
-							if( Math.random() < 0.6 ){
+							image_src = image_random.src;
+							image_daColor = image_random.daColor;
+							
+							if( Math.random() < 0.9 ){
 								var a_bubble = new jaws.Sprite({ image: image_src, x: (i+group_offset_x) * bubble_w , y: (j+group_offset_y) * bubble_h, anchor: "center_center" });
 								a_bubble.daColor = image_daColor;
 								a_bubble.visible = true;
@@ -134,12 +164,12 @@
 						// only near-sisters
 						var near_bubbles = color_bubbles.filter(validateSisters);
 						near_bubbles = color_bubbles.reverse().filter(validateSisters);
-						
+
 						// how many to pop ?
 						var how_many = 0;
 						bubbles.forEach(function( element ){
 							if( element.toPop == true ) how_many ++
-						})
+						});
 						
 						if( how_many > 1 ){
 							// pop now!
@@ -148,6 +178,9 @@
 									element.visible = false;
 								}
 							});
+							
+							count_killed_bubbles += how_many;
+							are_killed_bubbles = true;
 						}
 						
 						// unmark all
@@ -201,6 +234,14 @@
 				};
 				
 				this.update = function(){
+					jaws.on_keydown("enter", function(){
+						game_paused = !game_paused;
+					});
+				
+					if( game_paused == true ){
+						return;
+					}
+				
 					var x2 = jaws.width / 2;
 					var y2 = jaws.height;
 					var x1 = jaws.mouse_x;
@@ -269,20 +310,90 @@
 					}
 					
 					if( count_down < 0 ){
-						/*
-						for(){
-							bubbles.push( new  );
+						// some bubble reach floor ?
+						bubbles.forEach(function( entry ){
+							if( entry.visible == true ){
+								if( jaws.isOutsideCanvas(entry) == true ){
+									alert("GAME OVER :[, you killed "+count_killed_bubbles+" bubbles!.");
+									game_loop.stop();
+								}
+							}
+						});
+					
+						// push all to down
+						bubbles.forEach(function( entry ){
+							entry.y += bubble_h;
+						});
+					
+						// insert new row
+						var i = 0;
+						for( ; i < init_w ; i ++ ){
+							var new_bubble;
+							
+							var image_random;
+							image_random = generateRandomImage();
+							
+							new_bubble = new jaws.Sprite({ image: image_random.src , x : 0, y: 0, anchor: "center_center" });
+							new_bubble.daColor = image_random.daColor;
+							new_bubble.visible = true;
+							new_bubble.toPop = false;
+							
+							new_bubble.x = ( i + group_offset_x ) * bubble_w;
+							new_bubble.y = ( 0 + group_offset_y ) * ( bubble_h );
+							
+							bubbles.push( new_bubble );
 						}
-						*/
-						count_down = 100;
+						count_down = count_down_constant ;
+					}
+					
+					var point1 = count_down_constant / 4;
+					var point2 = count_down_constant / 2;
+					var point3 = 3* count_down_constant / 4;
+					var point4 = count_down_constant;
+					var point_text = "COUNTDOWN: "
+					
+					if( count_down > 0 && count_down < point1   ){
+						text_next_incoming.text = point_text + "1";
+					}else if(count_down >= point1 && count_down < point2   ){
+						text_next_incoming.text = point_text + "2";
+					}else if(count_down >= point2 && count_down < point3    ){
+						text_next_incoming.text = point_text + "3";
+					}else if(count_down >= point3 && count_down < count_down_constant  ){
+						text_next_incoming.text = point_text + "4";
 					}
 					count_down --;
+					if( count_down < 0 ){
+						count_down_constant *= 0.90;
+					}
+					
+					// update killed bubbles
+					text_killed_bubbles.text = "KILLED BUBBLES: "+generateZeros(count_killed_bubbles);
+					
+					if( are_killed_bubbles == true ){
+						text_killed_bubbles.fontSize = 20;
+						text_killed_bubbles.x -= 80;
+						
+						setTimeout(function(){
+							text_killed_bubbles.fontSize = 10;
+							text_killed_bubbles.x += 80;
+						}, jaws.game_loop.fps * 20 );
+						
+						are_killed_bubbles = false;
+					}
 				};
 				
 				this.draw = function(){
 					jaws.clear();
 					
-					text_time_left.draw();
+					if( game_paused == true ){
+						text_paused.draw();
+					}
+					
+					// text_time_left.draw();
+					text_killed_bubbles.draw();
+					text_next_incoming.draw();
+					text_credits.draw();
+					
 					bubbles.forEach(function(entry){
 						if( entry.visible == true ){
 							entry.draw();
@@ -302,7 +413,7 @@
 		
 			jaws.onload = function(){
 				jaws.unpack();
-				jaws.assets.add(["./img/bubble_red.png", "./img/bubble_green.png", "./img/bubble_blue.png", "./img/shooter.png"]);
+				jaws.assets.add(["./img/bubble_red.png", "./img/bubble_green.png", "./img/bubble_blue.png", "./img/shooter.png", "./img/paused.png"]);
 				jaws.start( Asdf );
 			}
 		</script>
