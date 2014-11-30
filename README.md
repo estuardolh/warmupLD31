@@ -1,4 +1,4 @@
-Warm up for LD 31
+﻿Warm up for LD 31
 =========
 
 I will use for LD 31:
@@ -8,6 +8,6 @@ I will use for LD 31:
 	- OS: Windows 7
 	- Text editor: Notepad++ <3
 	- Browser: Da Firefox 32
-	- Music/Sounds: LMMS
+	- Music/Sounds: LMMS.
 	
 [check out the game](https://rawgithub.com/estuardolh/warmupLD31/master/index.html)
